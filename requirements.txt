@@ -1,7 +1,6 @@
-libgl1-mesa-glx
-libglib2.0-0
-tensorflow
-pandas
 streamlit
-websockets
-opencv-python
+opencv-python-headless
+numpy
+requests
+av
+streamlit-webrtc
