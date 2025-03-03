@@ -32,4 +32,16 @@ def video_frame_callback(frame):
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 # Lancer WebRTC pour capturer la webcam du navigateur
-webrtc_streamer(key="video-feed", video_frame_callback=video_frame_callback, rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+webrtc_streamer(
+    key="video-feed",
+    video_frame_callback=video_frame_callback,
+    rtc_configuration={
+        "iceServers": [
+            {"urls": ["stun:stun1.l.google.com:19302"]},  
+            {"urls": ["stun:stun2.l.google.com:19302"]},
+            {"urls": ["stun:stun3.l.google.com:19302"]},
+            {"urls": ["stun:stun4.l.google.com:19302"]},
+            {"urls": ["stun:global.stun.twilio.com:3478"]}
+        ]
+    }
+)
