@@ -1,113 +1,35 @@
 import streamlit as st
-import pandas as pd
-import requests
-from PIL import Image
-import io
+from streamlit_webrtc import webrtc_streamer
+import av
 import cv2
+import requests
 import numpy as np
-import time
-import streamlit as st
-import asyncio
-import websockets
 import base64
-import json
 
-st.title('Emotion Detection')
+st.title("🎥 Prédiction IA via API en temps réel")
 
-with st.form(key="my_form"):
-    uploaded_file = st.file_uploader('Upload a file', type=['png', 'jpg', 'jpeg'])
-    if(uploaded_file):
-        image = Image.open(uploaded_file)
-        img_bytes = io.BytesIO()
-        image.save(img_bytes, format=image.format)
-        img_bytes = img_bytes.getvalue()
-        try:
-            response = requests.post("https://api-cloud-dfc87ab4de89.herokuapp.com/predict", files={"file": img_bytes})
-            result = response.json()['prediction'][0]
+API_URL = "https://api-cloud-g1-177dac7611b1.herokuapp.com/predict"  # Mets ton URL API ici
 
-            if(result=="surprise"):
-                st.success('Surprise 😯')
-            elif(result=="sad"):
-                st.success('Sad 😭')
-            elif(result=="neutral"):
-                st.success('Neutral 😐')
-            elif(result=="happy"):
-                st.success('Happy 😊')
-            elif(result=="fear"):
-                st.success('Fear 😨')
-            elif(result=="disgust"):
-                st.success('Disgust 🤢')
-            elif(result=="angry"):
-                st.success('Angry 😡')
-            
-        except:
-            st.error('Failed to create a new record')
-    st.form_submit_button("Predict")
+def send_frame_to_api(image):
+    """Envoie une image à l'API et récupère la prédiction."""
+    _, img_encoded = cv2.imencode(".jpg", image)
+    img_base64 = base64.b64encode(img_encoded.tobytes()).decode("utf-8")
 
+    response = requests.post(API_URL, json={"image": img_base64})
+    return response.json() if response.status_code == 200 else {"error": "API non disponible"}
 
-# URL du WebSocket de l'API FastAPI
-WS_URL = "ws://api-cloud-g1-177dac7611b1.herokuapp.com/ws"  # Remplace par l'URL correcte
+def video_frame_callback(frame):
+    img = frame.to_ndarray(format="bgr24")
 
-st.title("🎥 Flux Vidéo en Direct + Prédiction")
+    # Envoyer l'image à l'API et récupérer la prédiction
+    api_response = send_frame_to_api(img)
+    
+    # Ajouter le texte de prédiction sur l'image
+    if "prediction" in api_response:
+        prediction_text = api_response["prediction"]
+        cv2.putText(img, prediction_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-# Conteneur pour afficher l'image et la prédiction
-image_placeholder = st.empty()
-prediction_placeholder = st.empty()
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-async def stream_video():
-    """Envoie les images de la webcam à l'API WebSocket et affiche la prédiction."""
-    async with websockets.connect(WS_URL) as websocket:
-        cap = cv2.VideoCapture(0)  # Ouvre la webcam
-
-        try:
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Convertir l'image OpenCV en PIL
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image_pil = Image.fromarray(frame_rgb)
-
-                # Encoder l'image en binaire
-                img_bytes = io.BytesIO()
-                image_pil.save(img_bytes, format="JPEG")
-                img_bytes = img_bytes.getvalue()
-
-                # Envoyer l'image à l'API WebSocket
-                await websocket.send(img_bytes)
-
-                # Réception de la prédiction
-                response = await websocket.recv()
-                prediction = json.loads(response).get("prediction", "Aucune prédiction")
-
-                # Mise à jour de l'affichage Streamlit
-                image_placeholder.image(image_pil, caption="Flux en direct", use_container_width=True)
-                result_stream = prediction[0]
-                text_to_write = ''
-                if(result_stream=="surprise"):
-                    text_to_write='Surprise 😯'
-                elif(result_stream=="sad"):
-                    text_to_write='Sad 😭'
-                elif(result_stream=="neutral"):
-                    text_to_write='Neutral 😐'
-                elif(result_stream=="happy"):
-                    text_to_write='Happy 😊'
-                elif(result_stream=="fear"):
-                    text_to_write='Fear 😨'
-                elif(result_stream=="disgust"):
-                    text_to_write='Disgust 🤢'
-                elif(result_stream=="angry"):
-                    text_to_write='Angry 😡'
-                prediction_placeholder.write(f"**Prédiction :** {text_to_write}")
-
-                # await asyncio.sleep(0.05)  # Pause pour éviter de surcharger l'API
-
-        finally:
-            cap.release()
-
-# Lancer la boucle d'événements Asyncio
-asyncio.run(stream_video())
-
-
-
+# Lancer WebRTC pour capturer la webcam du navigateur
+webrtc_streamer(key="video-feed", video_frame_callback=video_frame_callback, rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
