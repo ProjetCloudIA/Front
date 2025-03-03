@@ -1,7 +1,7 @@
+libgl1-mesa-glx
+libglib2.0-0
 tensorflow
 pandas
 streamlit
 websockets
-opencv-python-headless
-libgl1-mesa-glx
-libglib2.0-0
+opencv-python
