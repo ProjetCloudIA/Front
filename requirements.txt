@@ -4,3 +4,4 @@ numpy
 requests
 av
 streamlit-webrtc
+websockets
