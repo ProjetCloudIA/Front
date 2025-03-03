@@ -6,7 +6,11 @@ import io
 import cv2
 import numpy as np
 import time
-
+import streamlit as st
+import asyncio
+import websockets
+import base64
+import json
 
 st.title('Emotion Detection')
 
@@ -40,17 +44,9 @@ with st.form(key="my_form"):
             st.error('Failed to create a new record')
     st.form_submit_button("Predict")
 
-import streamlit as st
-import cv2
-import asyncio
-import websockets
-import base64
-import json
-from PIL import Image
-import io
 
 # URL du WebSocket de l'API FastAPI
-WS_URL = "ws://api-cloud-dfc87ab4de89.herokuapp.com/ws"  # Remplace par l'URL correcte
+WS_URL = "ws://api-cloud-g1-177dac7611b1.herokuapp.com/ws"  # Remplace par l'URL correcte
 
 st.title("🎥 Flux Vidéo en Direct + Prédiction")
 
@@ -112,3 +108,6 @@ async def stream_video():
 
 # Lancer la boucle d'événements Asyncio
 asyncio.run(stream_video())
+
+
+

@@ -2,3 +2,4 @@ tensorflow
 pandas
 streamlit
 websockets
+opencv-python
