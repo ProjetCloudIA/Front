@@ -1,47 +1,76 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer
-import av
-import cv2
+import pandas as pd
 import requests
+from PIL import Image
+import io
+import cv2
 import numpy as np
+import time
+import streamlit as st
+import asyncio
+import websockets
 import base64
+import json
 
-st.title("🎥 Prédiction IA via API en temps réel")
+st.title('Emotion Detection')
 
-API_URL = "https://api-cloud-g1-177dac7611b1.herokuapp.com/predict"  # Mets ton URL API ici
+with st.form(key="my_form"):
+    uploaded_file = st.file_uploader('Télécharger un fichier', type=['png', 'jpg', 'jpeg'])
+    if(uploaded_file):
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Image capturée", use_container_width=True)
+        img_bytes = io.BytesIO()
+        image.save(img_bytes, format=image.format)
+        img_bytes = img_bytes.getvalue()
+        try:
+            response = requests.post("https://api-cloud-g1-177dac7611b1.herokuapp.com/predict", files={"file": img_bytes})
+            result = response.json()['prediction'][0]
 
-def send_frame_to_api(image):
-    """Envoie une image à l'API et récupère la prédiction."""
-    _, img_encoded = cv2.imencode(".jpg", image)
-    img_base64 = base64.b64encode(img_encoded.tobytes()).decode("utf-8")
+            emotions = {
+                "surprise": "Surprise 😯",
+                "sad": "Sad 😭",
+                "neutral": "Neutral 😐",
+                "happy": "Happy 😊",
+                "fear": "Fear 😨",
+                "disgust": "Disgust 🤢",
+                "angry": "Angry 😡"
+            }
+            
+            st.success(emotions.get(result, "Émotion inconnue"))
+            
+            
+        except:
+            st.error('Erreur pendant la prédiction')
+    st.form_submit_button("Prédire")
 
-    response = requests.post(API_URL, json={"image": img_base64})
-    return response.json() if response.status_code == 200 else {"error": "API non disponible"}
+st.title('Détecteur d\'émotions')
 
-def video_frame_callback(frame):
-    img = frame.to_ndarray(format="bgr24")
+# Capture d'image avec la caméra intégrée de Streamlit
+captured_image = st.camera_input("Prenez une photo")
 
-    # Envoyer l'image à l'API et récupérer la prédiction
-    api_response = send_frame_to_api(img)
+if captured_image:
+    image = Image.open(captured_image)
+    img_bytes = io.BytesIO()
+    image.save(img_bytes, format="JPEG")
+    img_bytes = img_bytes.getvalue()
     
-    # Ajouter le texte de prédiction sur l'image
-    if "prediction" in api_response:
-        prediction_text = api_response["prediction"]
-        cv2.putText(img, prediction_text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    try:
+        # Envoi de l'image à l'API
+        response = requests.post("https://api-cloud-g1-177dac7611b1.herokuapp.com/predict", files={"file": img_bytes})
+        result = response.json()['prediction'][0]
+        emotions = {
+            "surprise": "Surprise 😯",
+            "sad": "Sad 😭",
+            "neutral": "Neutral 😐",
+            "happy": "Happy 😊",
+            "fear": "Fear 😨",
+            "disgust": "Disgust 🤢",
+            "angry": "Angry 😡"
+        }
+        
+        st.success(emotions.get(result, "Émotion inconnue"))
+        
+    except():
+        st.error("Erreur lors de la prédiction de l'émotion.")
 
-    return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# Lancer WebRTC pour capturer la webcam du navigateur
-webrtc_streamer(
-    key="video-feed",
-    video_frame_callback=video_frame_callback,
-    rtc_configuration={
-        "iceServers": [
-            {"urls": ["stun:stun1.l.google.com:19302"]},  
-            {"urls": ["stun:stun2.l.google.com:19302"]},
-            {"urls": ["stun:stun3.l.google.com:19302"]},
-            {"urls": ["stun:stun4.l.google.com:19302"]},
-            {"urls": ["stun:global.stun.twilio.com:3478"]}
-        ]
-    }
-)
